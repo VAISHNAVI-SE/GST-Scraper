@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GST Number Verification</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="card-header text-center">
+                <h2 class="mb-0">GST Number Verification</h2>
+                <p class="mb-0 mt-2">Enter GST number to verify and get details</p>
+            </div>
+            <div class="card-body p-4">
+                <form id="gstForm">
+                    <div class="mb-3">
+                        <label for="gstNumber" class="form-label">GST Number</label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="gstNumber" 
+                               placeholder="e.g., 37AAACP2678Q1ZP"
+                               maxlength="15"
+                               required>
+                        <div class="form-text">Enter 15-digit GST number (Format: 99AAAAA9999A9A9)</div>
+                    </div>
+                    <div class="text-center">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <span class="loading spinner-border spinner-border-sm me-2" role="status"></span>
+                            <span class="btn-text">Verify GST Number</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <div id="resultSection" style="display: none;">
+            <div class="card result-card">
+                <div class="card-header">
+                    <h5 class="mb-0">Verification Results</h5>
+                </div>
+                <div class="card-body">
+                    <div id="resultContent"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Console Output Section -->
+        <div id="consoleSection" style="display: none;">
+            <div class="card result-card">
+                <div class="card-header">
+                    <h5 class="mb-0">Console Output</h5>
+                </div>
+                <div class="card-body">
+                    <pre id="consoleOutput" class="console-output"></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer mt-5">
+        <div class="container text-center">
+            <p class="text-muted">GST Verification Tool - Educational Purpose Only</p>
+        </div>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.getElementById('gstForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const gstNumber = document.getElementById('gstNumber').value.trim();
+            const loadingSpinner = document.querySelector('.loading');
+            const btnText = document.querySelector('.btn-text');
+            const submitBtn = document.querySelector('button[type="submit"]');
+            
+            if (!gstNumber) {
+                showAlert('Please enter a GST number', 'warning');
+                return;
+            }
+            
+            // Validate GST number format
+            if (!validateGSTFormat(gstNumber)) {
+                showAlert('Please enter a valid GST number format (15 characters)', 'warning');
+                return;
+            }
+            
+            // Show loading state
+            loadingSpinner.style.display = 'inline-block';
+            btnText.textContent = 'Verifying...';
+            submitBtn.disabled = true;
+            
+            // Hide previous results
+            document.getElementById('resultSection').style.display = 'none';
+            document.getElementById('consoleSection').style.display = 'none';
+            
+            // Make API call
+            fetch('/api/verify-gst-console', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    gst_number: gstNumber
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    displayResults(data);
+                } else {
+                    displayError(data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                displayError('Network error occurred. Please try again.');
+            })
+            .finally(() => {
+                // Reset loading state
+                loadingSpinner.style.display = 'none';
+                btnText.textContent = 'Verify GST Number';
+                submitBtn.disabled = false;
+            });
+        });
+        
+        function validateGSTFormat(gstNumber) {
+            const gstPattern = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}[Z]{1}[0-9A-Z]{1}$/;
+            return gstPattern.test(gstNumber.toUpperCase());
+        }
+        
+        function displayResults(data) {
+            const resultSection = document.getElementById('resultSection');
+            const resultContent = document.getElementById('resultContent');
+            const consoleSection = document.getElementById('consoleSection');
+            const consoleOutput = document.getElementById('consoleOutput');
+            
+            // Display structured data
+            if (data.raw_data && Object.keys(data.raw_data).length > 0) {
+                let html = '<div class="table-responsive"><table class="table data-table">';
+                
+                for (const [key, value] of Object.entries(data.raw_data)) {
+                    const formattedKey = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                    html += `<tr><th style="width: 30%;">${formattedKey}</th><td>${value}</td></tr>`;
+                }
+                
+                html += '</table></div>';
+                resultContent.innerHTML = html;
+                resultSection.style.display = 'block';
+            }
+            
+            // Display console output
+            if (data.console_output) {
+                consoleOutput.textContent = data.console_output;
+                consoleSection.style.display = 'block';
+            }
+            
+            // Show success message
+            showAlert('GST verification completed successfully!', 'success');
+            
+            // Scroll to results
+            setTimeout(() => {
+                resultSection.scrollIntoView({ behavior: 'smooth' });
+            }, 100);
+        }
+        
+        function displayError(errorMessage) {
+            const resultSection = document.getElementById('resultSection');
+            const resultContent = document.getElementById('resultContent');
+            
+            resultContent.innerHTML = `
+                <div class="alert alert-danger" role="alert">
+                    <h6 class="alert-heading">Verification Failed</h6>
+                    <p class="mb-0">${errorMessage}</p>
+                </div>
+            `;
+            
+            resultSection.style.display = 'block';
+            resultSection.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        function showAlert(message, type) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+            alertDiv.style.top = '20px';
+            alertDiv.style.right = '20px';
+            alertDiv.style.zIndex = '9999';
+            alertDiv.style.minWidth = '300px';
+            
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            document.body.appendChild(alertDiv);
+            
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.parentNode.removeChild(alertDiv);
+                }
+            }, 5000);
+        }
+        
+        // Auto-format GST number input
+        document.getElementById('gstNumber').addEventListener('input', function(e) {
+            const value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+            e.target.value = value;
+            
+            // Real-time validation feedback
+            const isValid = validateGSTFormat(value);
+            const input = e.target;
+            
+            if (value.length > 0) {
+                if (isValid) {
+                    input.classList.remove('is-invalid');
+                    input.classList.add('is-valid');
+                } else {
+                    input.classList.remove('is-valid');
+                    input.classList.add('is-invalid');
+                }
+            } else {
+                input.classList.remove('is-valid', 'is-invalid');
+            }
+        });
+        
+        // Add Enter key support
+        document.getElementById('gstNumber').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                document.getElementById('gstForm').dispatchEvent(new Event('submit'));
+            }
+        });
+        
+        // Clear results when input changes
+        document.getElementById('gstNumber').addEventListener('input', function() {
+            document.getElementById('resultSection').style.display = 'none';
+            document.getElementById('consoleSection').style.display = 'none';
+        });
+    </script>
+</body>
+</html>
