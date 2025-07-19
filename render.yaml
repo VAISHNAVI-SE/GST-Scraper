@@ -1,9 +1,12 @@
 services:
   - type: web
-    name: gst-verifier
+    name: GST-Scraper-6
     env: python
+    runtime: python
     buildCommand: "./build.sh"
-    startCommand: "gunicorn --bind 0.0.0.0:$PORT app:app"
+    startCommand: "gunicorn --bind 0.0.0.0:$PORT app:app --timeout 120"
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
+      - key: PLAYWRIGHT_BROWSERS_PATH
+        value: /opt/render/.cache/ms-playwright
