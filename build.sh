@@ -11,6 +11,5 @@ pip install -r requirements.txt
 # Install Playwright browser (Chromium)
 echo "Installing Playwright browser..."
 playwright install chromium
-playwright install-deps
 
 echo "Build completed successfully!"
