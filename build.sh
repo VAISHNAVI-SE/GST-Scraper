@@ -1,9 +1,16 @@
 #!/usr/bin/env bash
+set -e
 
-# Step 1: Install Python dependencies
+echo "Setting up Python environment..."
+
+# Install Python dependencies
 echo "Installing Python packages..."
+pip install --upgrade pip
 pip install -r requirements.txt
 
-# Step 2: Install Playwright browser (Chromium)
+# Install Playwright browser (Chromium)
 echo "Installing Playwright browser..."
 playwright install chromium
+playwright install-deps
+
+echo "Build completed successfully!"
